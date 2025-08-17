@@ -23,14 +23,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      
-
-      - name: Docker Login
-        uses: docker/login-action@v3
+    
+      - name: ghcr Login
+        uses: docker/login-action@v2
         with:
-          username: ${{ vars.DOCKERUSERNAME }}
-          password: ${{ secrets.DOCKERPASSWORD }}
-      - name: Build and push Docker image
+          registry: ghcr.io
+          username: ${{ vars.GITHUBUSERNAME }}
+          password: ${{ secrets.GITHUBTOKEN }}
+      - name: Build Docker image
         uses: docker/build-push-action@v3
         with:
           push: false

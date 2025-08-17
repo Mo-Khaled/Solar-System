@@ -43,5 +43,5 @@ jobs:
           if: steps.test.outcome == 'success' || steps.test.outcome == 'failure'
           uses: actions/upload-artifact@v4
           with:
-            name: test-results
+            name: test-results-${{ matrix.os }}-${{ matrix.nodejs_version }}
             path: test-results.xml

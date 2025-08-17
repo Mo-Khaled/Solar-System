@@ -25,12 +25,11 @@ jobs:
 
       
 
-      - name: ghcr Login
-        uses: docker/login-action@v2
+      - name: Docker Login
+        uses: docker/login-action@v4
         with:
-          registry: ghcr.io
-          username: ${{ vars.GITHUBUSERNAME }}
-          password: ${{ secrets.GITHUBTOKEN }}
+          username: ${{ vars.DOCKERUSERNAME }}
+          password: ${{ secrets.DOCKERPASSWORD }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:

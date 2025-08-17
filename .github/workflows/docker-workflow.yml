@@ -23,12 +23,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: GHCR Login
+      - name: Docker Hub Login
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}   # <-- PAT with write:packages
+          username: ${{ vars.DOCKERUSERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
         uses: docker/build-push-action@v3
@@ -36,8 +35,8 @@ jobs:
           context: .
           push: false
           tags: |
-            ghcr.io/${{ github.repository_owner }}/solar-system:latest
-            ghcr.io/${{ github.repository_owner }}/solar-system:${{ github.sha }}
+            ${{ vars.DOCKERUSERNAME }}/solar-system:latest
+            ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}
 
       - name: Test Docker image
         run: |
@@ -47,10 +46,12 @@ jobs:
             -e MONGO_URI=${{ env.MONGO_URI }} \
             -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
             -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
-            ghcr.io/${{ github.repository_owner }}/solar-system:${{ github.sha }}
-          
-          # Get container IP and test
+            ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}
+
+          # Get container IP
           IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
           echo "Container IP: $IP"
+
+          # Test health endpoint
           echo "Testing Image URL..."
           curl -s http://127.0.0.1:3000/live | grep live

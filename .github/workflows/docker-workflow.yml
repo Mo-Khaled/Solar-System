@@ -35,8 +35,8 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: false
-          #run: docker buildx build -t ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }} .
-          tags: ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}  
+          run: docker buildx build -t ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }} .
+
       - name: Test Docker image
         run: |
           docker images

@@ -28,13 +28,6 @@ jobs:
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: GHCR Login
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ vars.GITHUB_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3

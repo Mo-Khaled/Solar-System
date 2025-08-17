@@ -23,35 +23,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Docker Hub Login
+      
+
+      - name: ghcr Login
         uses: docker/login-action@v2
         with:
-          username: ${{ vars.DOCKERUSERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build Docker image
+          registry: ghcr.io
+          username: ${{ vars.GITHUBUSERNAME }}
+          password: ${{ secrets.GITHUBTOKEN }}
+      - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: .
           push: false
-          tags: |
-            ${{ vars.DOCKERUSERNAME }}/solar-system:latest
-            ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}
+          tags: ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}
 
       - name: Test Docker image
         run: |
           docker images
           docker run --name solar-system-test -d \
-            -p 3000:3000 \
-            -e MONGO_URI=${{ env.MONGO_URI }} \
-            -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
-            -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
-            ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }}
-
-          # Get container IP
-          IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
-          echo "Container IP: $IP"
-
-          # Test health endpoint
-          echo "Testing Image URL..."
-          curl -s http://127.0.0.1:3000/live | grep live
+          -p 3000:3000 \
+          -e MONGO_URI=${{ env.MONGO_URI }} \
+          -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
+          -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
+          ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }} \
+          export IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test) \
+          echo "Container IP: $IP" \
+          echo Testing Image URL using wget
+          wget -q -o - 127.0.0.1:3000/live | grep live

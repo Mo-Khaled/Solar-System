@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
             context: .
-            push: false
+            push: true
             tags: solar-system:${{ github.sha }}
 
       - name: Test Docker image

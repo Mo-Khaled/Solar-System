@@ -33,19 +33,22 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v3
         with:
-          push: false
-          run: docker buildx build -t ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }} .
+            context: .
+            push: false
+            tags: solar-system:${{ github.sha }}
 
       - name: Test Docker image
         run: |
-          docker images
-          docker run --name solar-system-test -d \
-          -p 3000:3000 \
-          -e MONGO_URI=${{ env.MONGO_URI }} \
-          -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
-          -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
-          ${{ vars.DOCKERUSERNAME }}/solar-system:${{ github.sha }} \
-          export IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test) \
-          echo "Container IP: $IP" \
-          echo Testing Image URL using wget
-          wget -q -o - 127.0.0.1:3000/live | grep live
+            docker images
+            docker run --name solar-system-test -d \
+            -p 3000:3000 \
+            -e MONGO_URI=${{ env.MONGO_URI }} \
+            -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
+            -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
+            solar-system:${{ github.sha }}
+
+            sleep 5
+            IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
+            echo "Container IP: $IP"
+            wget -qO- 127.0.0.1:3000/live | grep live
+

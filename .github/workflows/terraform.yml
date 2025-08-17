@@ -24,7 +24,7 @@ jobs:
         - name: Set up Terraform
           uses: hashicorp/setup-terraform@v2
           with:
-            terraform_version: 1.0.0
+            terraform_version: 1.1.7
 
         - name: Terraform Init
           run: terraform init
@@ -36,9 +36,21 @@ jobs:
 
         - name: Terraform Apply
           working-directory: ./Terraform
-          run: |
-           if [ "${{ github.event.destroy }}" == "yes" ]; then
-             terraform destroy -auto-approve
-           else
-             terraform apply -auto-approve
-           fi
+          run: terraform apply -auto-approve
+    deploy:
+        name: deploy to eks
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v5
+          - name: Configure AWS Credentials
+            uses: aws-actions/configure-aws-credentials@v1
+            with:
+              aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws_region: us-east-1
+          - name: Deploy to EKS
+            run: |
+              aws eks update-kubeconfig --name my-cluster
+              kubectl apply -f k8s/deployment.yaml
+              kubectl apply -f k8s/service.yaml

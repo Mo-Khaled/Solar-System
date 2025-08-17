@@ -36,4 +36,12 @@ jobs:
           run: npm install
 
         - name: Run tests
+          id: test
           run: npm test
+
+        - name: Upload test results
+          if: steps.test.outcome == 'success' || steps.test.outcome == 'failure'
+          uses: actions/upload-artifact@v4
+          with:
+            name: test-results
+            path: test-results.xml

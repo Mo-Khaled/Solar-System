@@ -20,18 +20,18 @@ jobs:
 
       - name: Create S3 bucket (if not exists)
         run: |
-          if ! aws s3api head-bucket --bucket mohamed-bucket 2>/dev/null; then
+          if ! aws s3api head-bucket --bucket mo-bucket 2>/dev/null; then
             if [ "${AWS_REGION}" = "us-east-1" ]; then
               aws s3api create-bucket \
-                --bucket mohamed-bucket \
+                --bucket mo-bucket \
                 --region us-east-1
             else
               aws s3api create-bucket \
-                --bucket mohamed-bucket \
+                --bucket mo-bucket \
                 --region ${AWS_REGION} \
                 --create-bucket-configuration LocationConstraint=${AWS_REGION}
             fi
-            echo "S3 bucket mohamed-bucket created"
+            echo "S3 bucket mo-bucket created"
           else
             echo "S3 bucket already exists"
           fi

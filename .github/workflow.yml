@@ -167,22 +167,6 @@ jobs:
           fi
         working-directory: ./Terraform/team-01
 
-      - name: Create DynamoDB table
-        run: |
-          TABLE_NAME="Products"
-          if ! aws dynamodb describe-table --table-name $TABLE_NAME >/dev/null 2>&1; then
-            echo "Creating DynamoDB table: $TABLE_NAME"
-            aws dynamodb create-table \
-              --table-name $TABLE_NAME \
-              --attribute-definitions AttributeName=ProductId,AttributeType=S \
-              --key-schema AttributeName=ProductId,KeyType=HASH \
-              --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
-            echo "Waiting for DynamoDB table to become active..."
-            aws dynamodb wait table-exists --table-name $TABLE_NAME
-          else
-            echo "DynamoDB table $TABLE_NAME already exists"
-          fi
-
   deploy:
     needs: terraform
     name: deploy to EKS

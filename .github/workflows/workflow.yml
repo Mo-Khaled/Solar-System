@@ -145,11 +145,11 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./home/mohamed/Downloads/solar-system/Terraform/team-01
+        working-directory: ./Terraform/team1
 
       - name: Terraform Plan
         run: terraform plan
-        working-directory: ./home/mohamed/Downloads/solar-system/Terraform/team-01
+        working-directory: ./Terraform/team1
 
       - name: Terraform Apply or Destroy
         run: |
@@ -158,7 +158,7 @@ jobs:
           else
             terraform apply -auto-approve
           fi
-        working-directory: ./home/mohamed/Downloads/solar-system/Terraform/team-01
+        working-directory: ./Terraform/team1
 
   deploy:
     needs: terraform

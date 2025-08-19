@@ -191,7 +191,7 @@ jobs:
         run: |
           kubectl apply -f deployment.yaml
           kubectl apply -f service.yaml
-        working-directory: ./kubernates
+        working-directory: ./k8s
 
       - name: Verify Deployment
         run: |

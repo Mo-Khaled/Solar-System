@@ -97,11 +97,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker Image
-        uses: docker/build-push-action@v4
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
         with:
-          push: false
-          tags: ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+          context: .
+          push: true
+          tags: |
+            mo4222/solar-system:${{ github.sha }}
+            ghcr.io/mo-khaled/solar-system:${{ github.sha }}
+
 
       - name: Test Docker Image
         run: |

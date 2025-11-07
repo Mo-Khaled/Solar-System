@@ -37,7 +37,7 @@ jobs:
         id: init
         run: terraform init
 
-      # Validate syntax
+      # Validate synta
       - name: Terraform Validate
         id: validate
         run: terraform validate

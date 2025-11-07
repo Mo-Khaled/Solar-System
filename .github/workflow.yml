@@ -1,271 +1,55 @@
-name: solar-system-workflow
+name: 'Terraform AWS Deployment'
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - feature_brancheA
+      - main
+  pull_request:
+    branches:
       - main
 
-env:
-  MONGO_URI: 'mongodb+srv://supercluster.d83jj.mongodb.net/superData'
-  MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
-  MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
-
 jobs:
-  unit_testing:
-    name: unit_testing
-    strategy:
-      matrix:
-        nodejs-version: [18, 19, 20]
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        exclude:
-          - nodejs-version: 18
-            os: macos-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js - ${{ matrix.nodejs-version }}
-        uses: actions/setup-node@v4.4.0
-        with:
-          node-version: ${{ matrix.nodejs-version }}
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Run Tests
-        id: nodeNodeJs-unit-testing-step
-        run: npm test
-
-      - name: Archive Test Results
-        if: steps.nodeNodeJs-unit-testing-step.outcome == 'failure' || steps.nodeNodeJs-unit-testing-step.outcome == 'success'
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: sp-test-results-${{ matrix.os }}-${{ matrix.nodejs-version }}
-          path: test-results.xml
-
-  code-coverage:
-    name: code-coverage
-    needs: unit_testing
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js - 18
-        uses: actions/setup-node@v4.4.0
-        with:
-          node-version: 18
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Check Code Coverage
-        continue-on-error: true
-        run: npm run coverage
-
-      - name: Archive Coverage Results
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: code-coverage-results
-          path: coverage
-          retention-days: 5
-
-  docker:
-    name: containerization
-    needs: [unit_testing, code-coverage]
-    permissions:
-      packages: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v5
-
-      - name: Docker Login
-        uses: docker/login-action@v2
-        with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: GHCR Login
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            mo4222/solar-system:${{ github.sha }}
-            ghcr.io/mo-khaled/solar-system:${{ github.sha }}
-
-
-      - name: Test Docker Image
-        run: |
-          docker images
-          docker run --name solar-system-app -d \
-          -p 3000:3000 \
-          -e MONGO_URI=$MONGO_URI \
-          -e MONGO_USERNAME=$MONGO_USERNAME \
-          -e MONGO_PASSWORD=$MONGO_PASSWORD \
-          ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
-          export IP_ADDRESS=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-app)
-          echo $IP_ADDRESS
-          echo Testing image URL using wget
-          wget -q -O - 127.0.0.1:3000/live | grep live
-
-
   terraform:
-    name: terraform-deployment
-    needs: [docker, code-coverage, unit_testing]
+    name: 'Terraform Plan and Apply'
     runs-on: ubuntu-latest
-    environment: production
+    environment: production # Use a GitHub environment for better secret management
+
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v5
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: AWS Login
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
+      # Install Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.1.7
+          terraform_version: 1.8.0 # Specify a recent version
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ./Terraform/team1
-
-      - name: Terraform Plan
-        run: terraform plan
-        working-directory: ./Terraform/team1
-
-      - name: Terraform Apply or Destroy
-        run: |
-          if [ "${{ github.event.inputs.destroy }}" = "yes" ]; then
-            terraform destroy -auto-approve
-          else
-            terraform apply -auto-approve
-          fi
-        working-directory: ./Terraform/team1
-
-  deploy:
-    needs: terraform
-    name: deploy to EKS
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Config Files
-        uses: actions/checkout@v5
-
+      # Configure AWS Credentials
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }} # Uses 'us-east-1' as a fallback
 
-      - name: Update kubeconfig
-        run: |
-          aws eks --region us-east-1 update-kubeconfig --name sprints-cluster-0
+      # Initialize Terraform
+      - name: Terraform Init
+        id: init
+        run: terraform init
 
-      - name: Trigger App Deployment
-        uses: statsig-io/kubectl-via-eksctl@main
-        env:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: us-east-1
-          cluster: sprints-cluster-0
+      # Validate syntax
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
 
-      - name: Deploy K8s Deployments
-        run: |
-          kubectl apply -f deployment.yml
-          kubectl apply -f service.yml
-        working-directory: ./k8s
+      # Create Plan (on Pull Requests)
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color
 
-      - name: Verify Deployment
-        run: |
-          kubectl get pods
-          kubectl get svc
-  deploy-monitoring:
-        needs: deploy
-        name: deploy to EKS
-        runs-on: ubuntu-latest
-        env: 
-          AWS_REGION: us-west-2
-          EKS_CLUSTER_NAME: stage-eks-cluster
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.grafana_admin_password }}
-
-        steps:
-            - name: checkout config files
-              uses: actions/checkout@v5
-
-
-            - name: Configure AWS Credentials
-              uses: aws-actions/configure-aws-credentials@v4.3.1
-              with:
-                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: us-east-1
-
-            - name: update kubeconfig
-              run: | 
-                    aws eks --region us-east-1 update-kubeconfig --name stage-eks-cluster
-
-            - name: Trigger app deployment
-              uses: statsig-io/kubectl-via-eksctl@main
-              env:
-                 aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                 aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                 region: us-east-1
-                 cluster: stage-eks-cluster
-
-            - name: Output monitoring namespace YAML
-              run: kubectl create namespace monitoring --dry-run=client -o yaml
-            - name: Create monitoring namespace
-              run: kubectl create namespace monitoring || true
-
-            - name: Add Helm repos
-              run: |
-                helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-                helm repo add grafana https://grafana.github.io/helm-charts
-                helm repo update
-            - name: Render values with env
-              run: |
-               envsubst < values.yml > /tmp/values.rendered.yml
-               echo "Rendered values:"
-               tail -n +1 /tmp/values.rendered.yml
-              working-directory: ./kubernetes
-
-            - name: Install/Upgrade kube-prometheus-stack
-              run: |
-                helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-                  --namespace monitoring \
-                  --values /tmp/values.rendered.yml \
-                  --wait --timeout 15m
-            - name: Apply ServiceMonitor for my app
-              run: |
-                kubectl apply -f servicemonitor.yml
-              working-directory: ./kubernetes
-
-            - name: Show external endpoints
-              run: |
-                echo "Waiting for LoadBalancer IPs..."
-                kubectl -n monitoring wait --for=condition=available deploy/kube-prometheus-stack-grafana --timeout=10m
-                kubectl -n monitoring get svc -o wide
-                echo "Grafana URL:"
-                kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{"\n"}{.status.loadBalancer.ingress[0].ip}{"\n"}'
-                echo "Prometheus URL:"
-                kubectl -n monitoring get svc kube-prometheus-stack-prometheus -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{"\n"}{.status.loadBalancer.ingress[0].ip}{"\n"}'
-
-                    
+      # Apply changes (on push to main)
+      - name: Terraform Apply
+        id: apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve
